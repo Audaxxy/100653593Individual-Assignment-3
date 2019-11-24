@@ -11,7 +11,8 @@ public enum PlayerState
 {
     IDLE,
     RUNNING,
-    CLIMBING
+    CLIMBING,
+	WALL_SLIDING
 }
 
 // Other states to consider: ON_WALL, JUMPING, FALLING, DASHING, WALL_JUMPING
@@ -88,9 +89,9 @@ public class Movement : MonoBehaviour
     }
 
 
-
-    // Update is called once per frame
-    void Update()
+	#region Update
+	// Update is called once per frame
+	void Update()
     {
         // Set input data for easy access
         SetInputVariables();
@@ -104,19 +105,7 @@ public class Movement : MonoBehaviour
     
         // Can enter the climbing state from any state
         // You may want to move this depending on the states you add
-        if (coll.onWall && Input.GetButton("Fire2") && canMove)
-        {
-            // Change state
-            currentState = PlayerState.CLIMBING;
-
-            // Flips sprite based on which wall
-            if(side != coll.wallSide)
-                anim.Flip(side*-1);
-            
-            // Bools for movement and animation
-            wallGrab = true;
-            wallSlide = false;
-        }
+       
 
         // Used when no longer on a wall
         if (Input.GetButtonUp("Fire2") || !coll.onWall || !canMove)
@@ -133,63 +122,6 @@ public class Movement : MonoBehaviour
             GetComponent<BetterJumping>().enabled = true;
         }
         
-        // Old Climbing code
-        if (wallGrab && !isDashing)
-        {
-            // All this movement code is now in the CLIMBING state
-        }
-        else
-        {
-            // Moved this to the leave condition in the CLIMBING state
-            //rb.gravityScale = 3;
-        }
-
-        // When on the wall and not on the gorund
-        if(coll.onWall && !coll.onGround)
-        {
-            // If the player is moving towards the wall
-            if (xInput != 0 && !wallGrab)
-            {   
-                // Slide down the wall
-                wallSlide = true;
-                WallSlide();
-            }
-
-            // Maybe there could be an ON_WALL state?
-            // Try it out!
-        }
-
-        // If not on the wall and on the ground
-        // Maybe move this to IDLE? 
-        if (!coll.onWall || coll.onGround)
-            wallSlide = false;
-
-        // Jump when hitting the space bar
-        if (Input.GetButtonDown("Jump"))
-        {
-            // Sets the jump animation
-            anim.SetTrigger("jump");
-
-            // What states can you jump from?
-
-            // Maybe move to IDLE and/or RUNNING
-            if (coll.onGround)
-                Jump(Vector2.up, false);
-
-            // Maybe move to an ON_WALL state
-            if (coll.onWall && !coll.onGround)
-                WallJump();
-        }
-
-        // If left click and if dash is not on cooldown
-        if (Input.GetButtonDown("Fire1") && !hasDashed)
-        {
-            // As long as there is some directional input
-            if(xRaw != 0 || yRaw != 0)
-
-                // Dash using raw input values
-                Dash(xRaw, yRaw);
-        }
 
         // When you land on the ground
         if (coll.onGround && !groundTouch)
@@ -226,69 +158,146 @@ public class Movement : MonoBehaviour
         // Since IDLE, RUNNING, JUMPING, FALLING all still need to use this code
 
     }
-
-    private void StateMachine(PlayerState state)
+	#endregion
+	#region states
+	private void StateMachine(PlayerState state)
     {
-        // This is where the code for each state goes
-        switch (state)
-        {
-            case PlayerState.IDLE:
+		// This is where the code for each state goes
+		switch (state)
+		{
+			case PlayerState.IDLE:
+				if (!coll.onWall || coll.onGround)
+					wallSlide = false;
+				// Condition: Horizontal input, go to RUNNING state
+				if (xInput > 0.01f || xInput < -0.01f)
+				{
+					currentState = PlayerState.RUNNING;
+				}
+				if (coll.onWall && !coll.onGround)
+				{
+					currentState = PlayerState.WALL_SLIDING;
+				}
+				if (Input.GetButtonDown("Jump"))
+				{
+					if (coll.onGround)
+						Jump(Vector2.up, false);
+				}
+				if (Input.GetButtonDown("Fire1") && !hasDashed)
+				{
+					// As long as there is some directional input
+					if (xRaw != 0 || yRaw != 0)
 
-                // Condition: Horizontal input, go to RUNNING state
-                if(xInput > 0.01f || xInput < -0.01f)
-                {
-                    currentState = PlayerState.RUNNING;
-                }
+						// Dash using raw input values
+						Dash(xRaw, yRaw);
+				}
 
-            break;
+				break;
 
-            case PlayerState.RUNNING:
+			case PlayerState.RUNNING:
 
-                // Use input direction to move and change the animation
-                Walk(inputDirection);
-                anim.SetHorizontalMovement(xInput, yInput, rb.velocity.y);
-            
-                // Condition: No horizontal input, go to IDLE state
-                if(xInput <= 0.01f || xInput >= 0.01f)
-                {
-                    currentState = PlayerState.IDLE;
-                }
+				// Use input direction to move and change the animation
+				Walk(inputDirection);
+				anim.SetHorizontalMovement(xInput, yInput, rb.velocity.y);
 
-            break;
-            
-            case PlayerState.CLIMBING:
-            
-                // Stop gravity
-                rb.gravityScale = 0;
+				// Condition: No horizontal input, go to IDLE state
+				if (xInput <= 0.01f || xInput >= 0.01f)
+				{
+					currentState = PlayerState.IDLE;
+				}
+				if (Input.GetButtonDown("Jump"))
+				{
+					if (coll.onGround)
+						Jump(Vector2.up, false);
+				}
+				if (Input.GetButtonDown("Fire1") && !hasDashed)
+				{
+					// As long as there is some directional input
+					if (xRaw != 0 || yRaw != 0)
 
-                // Limit horizontal movement
-                if(xInput > .2f || xInput < -.2f)
-                {
-                    rb.velocity = new Vector2(rb.velocity.x, 0);
-                }
-            
-                // Vertical Movement, slower when climbing
-                float speedModifier = yInput > 0 ? .5f : 1;
-                rb.velocity = new Vector2(rb.velocity.x, yInput * (speed * speedModifier));
+						// Dash using raw input values
+						Dash(xRaw, yRaw);
+				}
 
-                // Leave Condition:
-                if (!coll.onWall || !Input.GetButton("Fire2"))
-                {
-                    // Change state to default
-                    currentState = PlayerState.IDLE;
-            
-                    // Reset Gravity
-                    rb.gravityScale = 3;
-                }
-        
-            break;
+				break;
+
+			case PlayerState.CLIMBING:
+
+				// Stop gravity
+				rb.gravityScale = 0;
+				
+				// Limit horizontal movement
+				if (xInput > .2f || xInput < -.2f)
+				{
+					rb.velocity = new Vector2(rb.velocity.x, 0);
+				}
+
+				// Vertical Movement, slower when climbing
+				float speedModifier = yInput > 0 ? .5f : 1;
+				rb.velocity = new Vector2(rb.velocity.x, yInput * (speed * speedModifier));
+
+				// Leave Condition:
+				if (Input.GetButtonDown("Jump"))
+				{
+					if (coll.onWall && !coll.onGround)
+						WallJump();
+				}
+				if (!coll.onWall || !Input.GetButton("Fire2"))
+				{
+					// Change state to default
+					currentState = PlayerState.IDLE;
+
+					// Reset Gravity
+					rb.gravityScale = 3;
+				}
+
+				break;
+
+			case PlayerState.WALL_SLIDING:
+				if(coll.onWall && Input.GetButton("Fire2") && canMove)
+				{
+					// Change state
+					currentState = PlayerState.CLIMBING;
+
+					// Flips sprite based on which wall
+					if (side != coll.wallSide)
+						anim.Flip(side * -1);
+
+					// Bools for movement and animation
+					wallGrab = true;
+					wallSlide = false;
+				}
+				if (Input.GetButtonDown("Jump"))
+				{
+					if (coll.onWall && !coll.onGround)
+						WallJump();
+					
+				}
+				if (xInput != 0 && !wallGrab)
+				{
+					// Slide down the wall
+					rb.gravityScale = 3;
+					wallSlide = true;
+					WallSlide();
+				}
+
+				if (!coll.onWall||coll.onGround)
+				{
+					currentState = PlayerState.IDLE;
+					wallSlide = false;
+				}
+				
+
+
+				break;
+
 
             // More states here pls
 
         }
     }
+	#endregion
 
-    void GroundTouch()
+	void GroundTouch()
     {
         // Reset dash
         hasDashed = false;
