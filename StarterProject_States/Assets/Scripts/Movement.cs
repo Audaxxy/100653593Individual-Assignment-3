@@ -145,7 +145,7 @@ public class Movement : MonoBehaviour
 	//which varies based upon the state, and I am tracking when the player makes contact with either the ground or walls, It is safe to assume, that after jumping, 
 	// the player will be falling until they make contact with either a wall or the floor, in which event, another case will take over. So as long is the player is airborne, it is treated as Idle.
 
-		// NOTE, ALSO CHANGED DASH TO X, AND DISABLED DASH RESETTING UPON GRABBING A WALL
+		// NOTE, ALSO CHANGED WALL GRAB TO X, AND DISABLED DASH RESETTING UPON GRABBING A WALL
 	private void StateMachine(PlayerState state)
     {
 		// This is where the code for each state goes
