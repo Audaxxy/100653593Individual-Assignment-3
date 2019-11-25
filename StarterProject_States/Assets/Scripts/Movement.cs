@@ -102,26 +102,8 @@ public class Movement : MonoBehaviour
         // Use the statemachine
         StateMachine(currentState);
 
-    
-        // Can enter the climbing state from any state
-        // You may want to move this depending on the states you add
-       
-
         // Used when no longer on a wall
-        if (Input.GetButtonUp("Fire2") || !coll.onWall || !canMove)
-        {
-            wallGrab = false;
-            wallSlide = false;
-        }
-
-        // When on the ground and not dashing
-        // You might want to move these to a state
-        if (coll.onGround && !isDashing)
-        {
-            wallJumped = false;
-            GetComponent<BetterJumping>().enabled = true;
-        }
-        
+       
 
         // When you land on the ground
         if (coll.onGround && !groundTouch)
@@ -166,8 +148,14 @@ public class Movement : MonoBehaviour
 		switch (state)
 		{
 			case PlayerState.IDLE:
+				if (Input.GetButtonUp("Fire2") || !coll.onWall || !canMove)
+				{
+					wallGrab = false;
+					wallSlide = false;
+				}
 				if (!coll.onWall || coll.onGround)
 					wallSlide = false;
+					wallGrab = false;
 				// Condition: Horizontal input, go to RUNNING state
 				if (xInput > 0.01f || xInput < -0.01f)
 				{
@@ -176,6 +164,7 @@ public class Movement : MonoBehaviour
 				if (coll.onWall && !coll.onGround)
 				{
 					currentState = PlayerState.WALL_SLIDING;
+					wallSlide = true;
 				}
 				if (Input.GetButtonDown("Jump"))
 				{
@@ -204,6 +193,11 @@ public class Movement : MonoBehaviour
 				{
 					currentState = PlayerState.IDLE;
 				}
+				if (coll.onGround && !isDashing)
+				{
+					wallJumped = false;
+					GetComponent<BetterJumping>().enabled = true;
+				}
 				if (Input.GetButtonDown("Jump"))
 				{
 					if (coll.onGround)
@@ -221,7 +215,8 @@ public class Movement : MonoBehaviour
 				break;
 
 			case PlayerState.CLIMBING:
-
+				wallGrab = true;
+				
 				// Stop gravity
 				rb.gravityScale = 0;
 				
@@ -240,12 +235,13 @@ public class Movement : MonoBehaviour
 				{
 					if (coll.onWall && !coll.onGround)
 						WallJump();
+					wallGrab = false;
 				}
-				if (!coll.onWall || !Input.GetButton("Fire2"))
+				if (!coll.onWall || !Input.GetButton("Fire2")||coll.onGround)
 				{
 					// Change state to default
 					currentState = PlayerState.IDLE;
-
+					
 					// Reset Gravity
 					rb.gravityScale = 3;
 				}
@@ -270,7 +266,9 @@ public class Movement : MonoBehaviour
 				{
 					if (coll.onWall && !coll.onGround)
 						WallJump();
-					
+					wallGrab = false;
+					wallSlide = false;
+
 				}
 				if (xInput != 0 && !wallGrab)
 				{
