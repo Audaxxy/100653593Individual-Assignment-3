@@ -1,5 +1,6 @@
 ﻿// Base taken from Mix and Jam: https://www.youtube.com/watch?v=STyY26a_dPY
-
+//Referencing tutorial base code
+//Nathan Boldy 100653593
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -101,8 +102,6 @@ public class Movement : MonoBehaviour
 
         // Use the statemachine
         StateMachine(currentState);
-
-        // Used when no longer on a wall
        
 
         // When you land on the ground
@@ -142,35 +141,58 @@ public class Movement : MonoBehaviour
     }
 	#endregion
 	#region states
+	//To preface, I am using 4 states. I considered adding jumping and falling states, but realised that because I am giving each other state a jump condition, 
+	//which varies based upon the state, and I am tracking when the player makes contact with either the ground or walls, It is safe to assume, that after jumping, 
+	// the player will be falling until they make contact with either a wall or the floor, in which event, another case will take over. So as long is the player is airborne, it is treated as Idle.
+
+		// NOTE, ALSO CHANGED DASH TO X, AND DISABLED DASH RESETTING UPON GRABBING A WALL
 	private void StateMachine(PlayerState state)
     {
 		// This is where the code for each state goes
 		switch (state)
 		{
+			//When player is idle, or between states, states are defaulted to IDLE
 			case PlayerState.IDLE:
+
+				//added this as a safety to ensure walk animation cannot play while idle
+				Walk(inputDirection);
+				anim.SetHorizontalMovement(xInput, yInput, rb.velocity.y);
+
+				//When climb is released, is not on wall, not moving
 				if (Input.GetButtonUp("Fire2") || !coll.onWall || !canMove)
 				{
+					//stop grab and slide animations
 					wallGrab = false;
 					wallSlide = false;
 				}
+
+				//When not on wall, or is touching ground
 				if (!coll.onWall || coll.onGround)
+					//stop slide and grab animations
 					wallSlide = false;
 					wallGrab = false;
+
 				// Condition: Horizontal input, go to RUNNING state
 				if (xInput > 0.01f || xInput < -0.01f)
 				{
 					currentState = PlayerState.RUNNING;
 				}
+				//When is on wall, and not on ground
 				if (coll.onWall && !coll.onGround)
 				{
+					//set state to WALL_SLIDING
 					currentState = PlayerState.WALL_SLIDING;
+					//start slide animation
 					wallSlide = true;
 				}
+				//when space is pressed, jump
 				if (Input.GetButtonDown("Jump"))
 				{
+					//makes sure is touching ground before jumping
 					if (coll.onGround)
 						Jump(Vector2.up, false);
 				}
+				//Dash when Z is pressed, and haven't dashed during this reset
 				if (Input.GetButtonDown("Fire1") && !hasDashed)
 				{
 					// As long as there is some directional input
@@ -181,7 +203,7 @@ public class Movement : MonoBehaviour
 				}
 
 				break;
-
+				//Walking/Running state
 			case PlayerState.RUNNING:
 
 				// Use input direction to move and change the animation
@@ -193,16 +215,21 @@ public class Movement : MonoBehaviour
 				{
 					currentState = PlayerState.IDLE;
 				}
+				
+				//When is on ground, and is not not dashing
 				if (coll.onGround && !isDashing)
 				{
+					//stop wall jump animation
 					wallJumped = false;
 					GetComponent<BetterJumping>().enabled = true;
 				}
+				//when space is pressed, jump
 				if (Input.GetButtonDown("Jump"))
 				{
 					if (coll.onGround)
 						Jump(Vector2.up, false);
 				}
+				//Dash when Z is pressed, and haven't dashed during this reset
 				if (Input.GetButtonDown("Fire1") && !hasDashed)
 				{
 					// As long as there is some directional input
@@ -213,8 +240,9 @@ public class Movement : MonoBehaviour
 				}
 
 				break;
-
+		//Climbing state
 			case PlayerState.CLIMBING:
+				//start grab animation
 				wallGrab = true;
 				
 				// Stop gravity
@@ -230,13 +258,15 @@ public class Movement : MonoBehaviour
 				float speedModifier = yInput > 0 ? .5f : 1;
 				rb.velocity = new Vector2(rb.velocity.x, yInput * (speed * speedModifier));
 
-				// Leave Condition:
+				//when space is pressed,  wall jump
 				if (Input.GetButtonDown("Jump"))
 				{
 					if (coll.onWall && !coll.onGround)
 						WallJump();
 					wallGrab = false;
 				}
+				// Leave Condition:
+				//When is not on wall or X is not held, or is on ground
 				if (!coll.onWall || !Input.GetButton("Fire2")||coll.onGround)
 				{
 					// Change state to default
@@ -248,10 +278,12 @@ public class Movement : MonoBehaviour
 
 				break;
 
+				//Wall sliding case
 			case PlayerState.WALL_SLIDING:
+				//When is on wall, and x is pressed, and can move
 				if(coll.onWall && Input.GetButton("Fire2") && canMove)
 				{
-					// Change state
+					// Change state to climbing
 					currentState = PlayerState.CLIMBING;
 
 					// Flips sprite based on which wall
@@ -262,35 +294,35 @@ public class Movement : MonoBehaviour
 					wallGrab = true;
 					wallSlide = false;
 				}
+				//When space is pressed, and on wall, wall jump
 				if (Input.GetButtonDown("Jump"))
 				{
+					//When is on wall, and is not on ground, walljump
 					if (coll.onWall && !coll.onGround)
 						WallJump();
+					//stop grab and slide animations
 					wallGrab = false;
 					wallSlide = false;
 
 				}
+				//When not moving on X, and not grabbing wall
 				if (xInput != 0 && !wallGrab)
 				{
-					// Slide down the wall
+					// Slide down the wall, start slide animation
 					rb.gravityScale = 3;
 					wallSlide = true;
 					WallSlide();
 				}
 
+				//When is not on wall, or is on ground
 				if (!coll.onWall||coll.onGround)
 				{
+					//set state to  default
 					currentState = PlayerState.IDLE;
+					//Stop slide animation
 					wallSlide = false;
 				}
-				
-
-
 				break;
-
-
-            // More states here pls
-
         }
     }
 	#endregion
